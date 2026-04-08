@@ -1,0 +1,127 @@
+{
+  "stationarity": {
+    "cpi": {
+      "series": "CPI level",
+      "adf_statistic": -2.4081,
+      "p_value": 0.1395,
+      "used_lag": 5,
+      "n_obs": 54,
+      "critical_values": {
+        "1%": -3.5577,
+        "5%": -2.9168,
+        "10%": -2.5962
+      },
+      "stationary": false
+    },
+    "inflation_yoy": {
+      "series": "Inflation YoY",
+      "adf_statistic": -2.9056,
+      "p_value": 0.0447,
+      "used_lag": 7,
+      "n_obs": 40,
+      "critical_values": {
+        "1%": -3.6056,
+        "5%": -2.9371,
+        "10%": -2.607
+      },
+      "stationary": true
+    },
+    "mpesa_growth": {
+      "series": "M-Pesa transaction growth",
+      "adf_statistic": -1.9062,
+      "p_value": 0.3292,
+      "used_lag": 11,
+      "n_obs": 47,
+      "critical_values": {
+        "1%": -3.5778,
+        "5%": -2.9253,
+        "10%": -2.6008
+      },
+      "stationary": false
+    },
+    "cbr": {
+      "series": "Central Bank Rate",
+      "adf_statistic": -1.3225,
+      "p_value": 0.6188,
+      "used_lag": 0,
+      "n_obs": 59,
+      "critical_values": {
+        "1%": -3.5464,
+        "5%": -2.9119,
+        "10%": -2.5937
+      },
+      "stationary": false
+    }
+  },
+  "granger_causality": {
+    "test": "Does M-Pesa growth Granger-cause inflation?",
+    "best_lag": 1,
+    "minimum_p_value": 0.0154,
+    "granger_causality_detected": true,
+    "lag_results": {
+      "1": {
+        "ssr_ftest_p_value": 0.0154,
+        "chi2test_p_value": 0.0092
+      },
+      "2": {
+        "ssr_ftest_p_value": 0.0185,
+        "chi2test_p_value": 0.0071
+      },
+      "3": {
+        "ssr_ftest_p_value": 0.1391,
+        "chi2test_p_value": 0.075
+      },
+      "4": {
+        "ssr_ftest_p_value": 0.2038,
+        "chi2test_p_value": 0.0954
+      },
+      "5": {
+        "ssr_ftest_p_value": 0.3021,
+        "chi2test_p_value": 0.1301
+      },
+      "6": {
+        "ssr_ftest_p_value": 0.4872,
+        "chi2test_p_value": 0.231
+      }
+    }
+  },
+  "sarima_summary": {
+    "model_type": "SARIMA",
+    "chosen_specification": {
+      "order": [
+        1,
+        0,
+        1
+      ],
+      "seasonal_order": [
+        1,
+        0,
+        1,
+        12
+      ]
+    },
+    "holdout_mae": 0.919,
+    "holdout_rmse": 1.0218
+  },
+  "garch_summary": {
+    "model_type": "GARCH(1,1)",
+    "current_market_volatility_index": 27.39,
+    "volatility_regime": "Low"
+  },
+  "roi_summary": {
+    "model_type": "OLS policy pass-through proxy",
+    "r_squared": 0.1647,
+    "latest_transaction_growth_pct": 5.422,
+    "beta_cbr_change_to_velocity_pct_points": -1.0757,
+    "impact_of_100bps_hike_on_velocity_pct_points": -1.0757,
+    "impact_of_100bps_cut_on_velocity_pct_points": 1.0757,
+    "estimated_monthly_transaction_uplift_kes_bn_after_100bps_cut": 15.68,
+    "estimated_annual_transaction_uplift_kes_bn_after_100bps_cut": 188.12,
+    "boardroom_message": "In this synthetic Kenya macro-fintech system, policy tightening suppresses monthly transaction velocity, while a 100 bps easing mechanically unlocks more throughput across mobile money rails."
+  },
+  "strategic_note": {
+    "policy_readout": "Inflation YoY is stationary, which tells Dennis whether a forecasting model is tracking a stable process or a drifting one. The current fintech volatility regime is low, meaning executive attention should focus on either growth capture or shock containment.",
+    "commercial_implication": "Mobile money growth shows predictive content for inflation shifts in the mock system. The boardroom implication is simple: if M-Pesa velocity starts to wobble while CBR remains elevated, consumer pricing pressure and merchant liquidity can diverge quickly.",
+    "decision_hook": "Base case SARIMA expects average inflation over the next 12 months of 4.44%. A 100 bps rate cut in this system is associated with roughly KES 15.68 bn extra monthly transaction throughput."
+  }
+}
