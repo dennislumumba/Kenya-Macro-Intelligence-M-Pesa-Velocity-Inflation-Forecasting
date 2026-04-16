@@ -1,9 +1,10 @@
 # Economic Intelligence Hub — Kenya Macro-Fintech Forecasting Engine
 
-## Strategic Advisory Note for Dennis Lumumba
+A data-driven project analyzing the link between M-Pesa transaction velocity and inflation in Kenya.
 
-### The hard truth
-Kenya has no shortage of dashboards. It has a shortage of decision engines. Most analysts stop at descriptive charts, which means executives still have to guess what happens next. This project is built to position Dennis Lumumba not as another reporting freelancer, but as a Kenya-focused economic intelligence operator who can translate CBK-style signals into executive action.
+The model explores how mobile money activity can act as a leading indicator for macroeconomic trends, applying time-series analysis and forecasting techniques to generate insights on inflation dynamics.
+
+This project demonstrates the potential of alternative financial data in real-time economic intelligence and policy-relevant forecasting.
 
 This repository answers one commercially relevant question: **how does M-Pesa transaction velocity interact with inflation and monetary policy in Kenya?**
 
