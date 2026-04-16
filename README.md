@@ -221,14 +221,3 @@ The current repository uses a **synthetic mock dataset** for demonstration. Howe
 These sources define the real-world framing of inflation, mobile money activity, and policy-rate context for a production version of this system.
 
 ---
-
-## Final advisory note
-
-Dennis, this project is bigger than code.
-
-It is a positioning weapon.
-
-If you keep presenting yourself as a broad “data analyst,” you will stay trapped in price competition.
-If you present yourself as a **Kenyan economic intelligence specialist who can forecast inflation, model digital transaction volatility, and explain policy transmission in plain English**, you move into a rarer category.
-
-That is where serious trust — and serious money — lives.
