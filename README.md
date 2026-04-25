@@ -179,27 +179,15 @@ Keeps the analysis honest with:
 
 ---
 
-## Authentic positioning advice for Dennis
-
-Here is the strategic leverage point: **do not market this as “I can build dashboards.”** That is a commodity.
-
-Market it as:
+Marketing as:
 
 > “I build economic intelligence systems for African markets that connect policy, inflation, digital payments, and commercial decision-making.”
 
-That framing does three things:
-
-- raises your price ceiling
-- differentiates you from generic BI analysts
-- makes your economics degree commercially visible
-
-A client does not pay premium rates because you know pandas. They pay because you reduce uncertainty in environments where wrong decisions are expensive.
-
 ---
 
-## Suggested next evolution
+## Next evolution
 
-If you want to turn this into a serious portfolio asset, the next version should add:
+the next version should add:
 
 1. **Live data connectors** for CBK and KNBS releases
 2. **Scenario analysis** for rate hike / rate cut / inflation shock cases
@@ -207,7 +195,6 @@ If you want to turn this into a serious portfolio asset, the next version should
 4. **Segment views** for banks, fintechs, FMCG, and investors
 5. **Automated briefing exports** to PDF or email for executives every month
 
-That is how this stops being a coding exercise and becomes a business.
 
 ---
 
