@@ -98,7 +98,7 @@ The model converts conditional volatility into a **Market Volatility Index (0–
 
 ### 4) FP&A & Quantitative Modeling
 
-    Budgeting: Developed automated variance tracking for regional sports infrastructure, maintaining a KES 5,000/hr revenue yield.
+   Budgeting: Developed automated variance tracking for regional sports infrastructure, maintaining a KES 5,000/hr revenue yield.
     * Forecasting: Engineered SARIMA/GARCH engines to project revenue velocity in mobile-first economies.
     * Scenario Analysis: Built multi-variable "What-If" models to stress-test SaaS unit economics across dual-jurisdiction operations (Singapore/Kenya)
 
