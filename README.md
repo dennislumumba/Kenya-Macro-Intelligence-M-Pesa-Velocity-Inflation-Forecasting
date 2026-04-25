@@ -96,7 +96,14 @@ This matters because average growth alone is not enough. Boards want to know:
 
 The model converts conditional volatility into a **Market Volatility Index (0–100)** so a non-technical executive can understand it immediately.
 
-### 4) Statistical rigor
+### 4) FP&A & Quantitative Modeling
+
+    Budgeting: Developed automated variance tracking for regional sports infrastructure, maintaining a KES 5,000/hr revenue yield.
+    * Forecasting: Engineered SARIMA/GARCH engines to project revenue velocity in mobile-first economies.
+    * Scenario Analysis: Built multi-variable "What-If" models to stress-test SaaS unit economics across dual-jurisdiction operations (Singapore/Kenya)
+
+
+### 5) Statistical rigor
 The engine includes two important diagnostics:
 
 - **ADF tests** for stationarity
@@ -104,7 +111,7 @@ The engine includes two important diagnostics:
 
 This is where the project stops being generic. It is not just showing a forecast. It is checking whether the underlying assumptions even justify time-series modelling.
 
-### 5) Executive ROI summary
+### 6) Executive ROI summary
 A simple policy pass-through regression estimates how **CBR changes relate to transaction velocity**.
 
 This creates a board-level commercial readout:
