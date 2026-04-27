@@ -50,10 +50,12 @@ FP&A & Quantitative Modeling Integration
    Reporting Efficiency: By automating the ingestion and modeling of CBK and KNBS datasets, this system reduced manual reporting cycles by 40%, transforming a 3-day manual task into a 120ms execution.
 ```text
 .
-├── forecasting_engine.py   # Core econometric + FP&A forecasting engine
-├── macro_dashboard.py      # Executive-facing dashboard
-└── README.md               # Strategic operating and advisory guide
-
+├── forecasting_engine.py   # Core econometric engine (SARIMA/GARCH)
+├── diagnostics.py          # Statistical validation (ADF & Granger Causality)
+├── macro_dashboard.py      # Executive-facing Streamlit interface
+├── scenario_simulator.py   # "What-If" engine for CBR sensitivity & revenue stress
+├── artifacts/              # Automated data exports and forecast results
+└── README.md               # Strategic FP&A advisory note
 
 ##Scenario Analysis: CBR Sensitivity & Liquidity Stress
 The engine utilizes a What-If Simulator to perform high-stakes scenario planning.
