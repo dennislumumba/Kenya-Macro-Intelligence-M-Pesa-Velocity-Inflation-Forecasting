@@ -3,29 +3,29 @@ from __future__ import annotations
 import json
 import warnings
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
 from arch import arch_model
 from statsmodels.regression.linear_model import OLS
 from statsmodels.tools.tools import add_constant
-from statsmodels.tsa.stattools import adfuller, grangercausalitytests
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+from diagnostics import build_model_validation_summary, save_diagnostics
+from scenario_simulator import run_scenario_analysis
 
 warnings.filterwarnings("ignore")
 
+BASE_DIR = Path(__file__).resolve().parent
+ARTIFACT_DIR = BASE_DIR / "artifacts"
+
 
 class KenyaEconomicIntelligenceEngine:
-    """Economic Intelligence Hub for Kenya.
+    """FP&A macro-fintech forecasting engine for Kenya.
 
-    This engine is intentionally designed for Dennis Lumumba's positioning as an
-    economist-data strategist: it combines classic econometrics, volatility
-    modeling, and executive-friendly output using a realistic Kenya macro-fintech lens.
-
-    IMPORTANT:
-    The dataset is synthetic/mock data shaped to resemble how one might analyse
-    CBK/KNBS monthly indicators. It is not official CBK or KNBS data.
+    The current implementation uses synthetic monthly data shaped like CBK / KNBS
+    indicators so the repository can run end-to-end without external credentials.
     """
 
     def __init__(self, random_seed: int = 42) -> None:
@@ -55,14 +55,14 @@ class KenyaEconomicIntelligenceEngine:
         return 11.25
 
     def generate_mock_cbk_data(self, start: str = "2021-01-31", periods: int = 60) -> pd.DataFrame:
-        dates = self._month_end_range(start, periods)
+        dates = self._month_end_range(start=start, periods=periods)
         cbr = np.array([self._cbr_schedule(d) for d in dates], dtype=float)
 
         seasonal_pattern = np.array([28, 16, 12, 8, 5, 0, 6, 10, 18, 22, 35, 58], dtype=float)
         fintech_campaign_bumps = np.array([6 if d.month in (3, 9, 12) else 0 for d in dates], dtype=float)
 
         mobile_money = []
-        current_value = 455.0  # KES bn baseline
+        current_value = 455.0
         prior_cbr = cbr[0]
 
         for i, d in enumerate(dates):
@@ -71,14 +71,15 @@ class KenyaEconomicIntelligenceEngine:
             policy_drag = -3.4 * max(cbr[i] - 8.0, 0)
             rate_shock_drag = (-28.0 * max(cbr[i] - prior_cbr, 0)) + (10.0 * max(prior_cbr - cbr[i], 0))
             macro_shock = self.rng.normal(0, 11)
-            regional_digitisation_tailwind = 5.0 * np.sin((2 * np.pi * i / 12) + 0.9)
+            digitisation_tailwind = 5.0 * np.sin((2 * np.pi * i / 12) + 0.9)
+
             current_value = max(
                 380,
                 current_value
                 + base_trend
                 + seasonal
                 + fintech_campaign_bumps[i]
-                + regional_digitisation_tailwind
+                + digitisation_tailwind
                 + policy_drag
                 + rate_shock_drag
                 + macro_shock,
@@ -108,11 +109,9 @@ class KenyaEconomicIntelligenceEngine:
             }
         )
 
-        # Add a few deliberate imperfections so the cleaning module has real work to do.
         df.loc[10, "mobile_money_value_kes_bn"] = np.nan
         df.loc[24, "cpi"] = np.nan
         df.loc[37, "cbr"] = np.nan
-
         return df
 
     def clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -132,64 +131,12 @@ class KenyaEconomicIntelligenceEngine:
         cleaned["mpesa_growth_pct"] = cleaned["mobile_money_value_kes_bn"].pct_change() * 100
         cleaned["cbr_change_pp"] = cleaned["cbr"].diff()
 
-        # Mild winsorisation to stop synthetic outliers from dominating GARCH estimation.
         for col in ["inflation_mom_pct", "inflation_yoy_pct", "mpesa_growth_pct"]:
             lower = cleaned[col].quantile(0.02)
             upper = cleaned[col].quantile(0.98)
             cleaned[col] = cleaned[col].clip(lower=lower, upper=upper)
 
         return cleaned
-
-    @staticmethod
-    def adf_test(series: pd.Series, label: str) -> Dict[str, Any]:
-        sample = series.dropna()
-        stat, pvalue, usedlag, nobs, critical_values, _ = adfuller(sample, autolag="AIC")
-        return {
-            "series": label,
-            "adf_statistic": round(float(stat), 4),
-            "p_value": round(float(pvalue), 4),
-            "used_lag": int(usedlag),
-            "n_obs": int(nobs),
-            "critical_values": {k: round(float(v), 4) for k, v in critical_values.items()},
-            "stationary": bool(pvalue < 0.05),
-        }
-
-    def stationarity_suite(self, df: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
-        return {
-            "cpi": self.adf_test(df["cpi"], "CPI level"),
-            "inflation_yoy": self.adf_test(df["inflation_yoy_pct"], "Inflation YoY"),
-            "mpesa_growth": self.adf_test(df["mpesa_growth_pct"], "M-Pesa transaction growth"),
-            "cbr": self.adf_test(df["cbr"], "Central Bank Rate"),
-        }
-
-    @staticmethod
-    def _safe_float(value: Any) -> float:
-        return round(float(value), 4)
-
-    def run_granger_causality(self, df: pd.DataFrame, max_lag: int = 6) -> Dict[str, Any]:
-        sample = df[["inflation_yoy_pct", "mpesa_growth_pct"]].dropna().copy()
-        results = grangercausalitytests(sample, maxlag=max_lag, verbose=False)
-        lag_results = {}
-        best_lag = None
-        best_p = 1.0
-
-        for lag, detail in results.items():
-            p_value = detail[0]["ssr_ftest"][1]
-            lag_results[str(lag)] = {
-                "ssr_ftest_p_value": self._safe_float(p_value),
-                "chi2test_p_value": self._safe_float(detail[0]["ssr_chi2test"][1]),
-            }
-            if p_value < best_p:
-                best_p = float(p_value)
-                best_lag = lag
-
-        return {
-            "test": "Does M-Pesa growth Granger-cause inflation?",
-            "best_lag": int(best_lag) if best_lag is not None else None,
-            "minimum_p_value": self._safe_float(best_p),
-            "granger_causality_detected": bool(best_p < 0.05),
-            "lag_results": lag_results,
-        }
 
     def fit_sarima(self, df: pd.DataFrame, horizon: int = 12) -> Dict[str, Any]:
         target = df.set_index("date")["inflation_yoy_pct"].dropna()
@@ -219,7 +166,7 @@ class KenyaEconomicIntelligenceEngine:
             except Exception:
                 continue
 
-        if fitted is None:
+        if fitted is None or chosen_spec is None:
             raise RuntimeError("SARIMA fitting failed across all candidate specifications.")
 
         holdout_forecast = fitted.get_forecast(steps=horizon)
@@ -239,8 +186,7 @@ class KenyaEconomicIntelligenceEngine:
         full_fitted = full_model.fit(disp=False)
         future_forecast = full_fitted.get_forecast(steps=horizon)
         future_ci = future_forecast.conf_int()
-        last_date = target.index[-1]
-        future_dates = pd.date_range(last_date + pd.offsets.MonthEnd(1), periods=horizon, freq="M")
+        future_dates = pd.date_range(target.index[-1] + pd.offsets.MonthEnd(1), periods=horizon, freq="M")
 
         holdout_df = pd.DataFrame(
             {
@@ -282,8 +228,7 @@ class KenyaEconomicIntelligenceEngine:
 
         forecast = fitted.forecast(horizon=horizon, reindex=False)
         future_vol = np.sqrt(forecast.variance.values[-1])
-        last_date = series.index[-1]
-        future_dates = pd.date_range(last_date + pd.offsets.MonthEnd(1), periods=horizon, freq="M")
+        future_dates = pd.date_range(series.index[-1] + pd.offsets.MonthEnd(1), periods=horizon, freq="M")
         future_index = 50 + 15 * ((future_vol - conditional_vol.mean()) / conditional_vol.std(ddof=0))
         future_index = np.clip(future_index, 0, 100)
 
@@ -304,12 +249,7 @@ class KenyaEconomicIntelligenceEngine:
         )
 
         current_index = float(hist_df["market_volatility_index"].iloc[-1])
-        if current_index >= 67:
-            regime = "High"
-        elif current_index >= 45:
-            regime = "Moderate"
-        else:
-            regime = "Low"
+        regime = "High" if current_index >= 67 else "Moderate" if current_index >= 45 else "Low"
 
         return {
             "model_type": "GARCH(1,1)",
@@ -319,7 +259,7 @@ class KenyaEconomicIntelligenceEngine:
             "future_volatility": future_df,
         }
 
-    def executive_roi_summary(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def advisory_note_for_cfos(self, df: pd.DataFrame) -> Dict[str, Any]:
         sample = df[["date", "mpesa_growth_pct", "cbr_change_pp", "cbr", "inflation_yoy_pct", "mobile_money_value_kes_bn"]].dropna().copy()
         sample["lagged_inflation"] = sample["inflation_yoy_pct"].shift(1)
         sample = sample.dropna().copy()
@@ -332,22 +272,10 @@ class KenyaEconomicIntelligenceEngine:
         latest_value = float(sample["mobile_money_value_kes_bn"].iloc[-1])
         latest_growth = float(sample["mpesa_growth_pct"].iloc[-1])
 
-        hike_100bps_velocity_impact = cbr_change_beta * 1.0
-        cut_100bps_velocity_impact = -cbr_change_beta * 1.0
-
+        hike_100bps_velocity_impact = cbr_change_beta
+        cut_100bps_velocity_impact = -cbr_change_beta
         monthly_uplift_kes_bn = latest_value * (cut_100bps_velocity_impact / 100)
         annualised_uplift_kes_bn = monthly_uplift_kes_bn * 12
-
-        if cut_100bps_velocity_impact >= 0:
-            boardroom_message = (
-                "In this synthetic Kenya macro-fintech system, policy tightening suppresses monthly transaction velocity, "
-                "while a 100 bps easing mechanically unlocks more throughput across mobile money rails."
-            )
-        else:
-            boardroom_message = (
-                "In this synthetic Kenya macro-fintech system, the estimated policy pass-through is not easing-friendly in the latest sample, "
-                "so Dennis should treat the velocity response as unstable and investigate structural breaks before making a commercial call."
-            )
 
         return {
             "model_type": "OLS policy pass-through proxy",
@@ -358,7 +286,9 @@ class KenyaEconomicIntelligenceEngine:
             "impact_of_100bps_cut_on_velocity_pct_points": round(cut_100bps_velocity_impact, 4),
             "estimated_monthly_transaction_uplift_kes_bn_after_100bps_cut": round(monthly_uplift_kes_bn, 2),
             "estimated_annual_transaction_uplift_kes_bn_after_100bps_cut": round(annualised_uplift_kes_bn, 2),
-            "boardroom_message": boardroom_message,
+            "advisory_message": (
+                "Mobile money velocity should be tracked as a leading indicator for liquidity crunches, revenue fragility, and human capital risk."
+            ),
         }
 
     @staticmethod
@@ -370,107 +300,28 @@ class KenyaEconomicIntelligenceEngine:
                     df[col] = df[col].astype(str)
             return df.to_dict(orient="records")
         if isinstance(value, pd.Series):
-            return value.astype(str).to_dict()
-        if isinstance(value, (np.integer, np.floating)):
-            return value.item()
+            return value.to_dict()
         if isinstance(value, dict):
             return {k: KenyaEconomicIntelligenceEngine._json_ready(v) for k, v in value.items()}
         if isinstance(value, list):
             return [KenyaEconomicIntelligenceEngine._json_ready(v) for v in value]
+        if isinstance(value, (np.integer, np.floating)):
+            return value.item()
         return value
 
-    def strategic_note(self, stationarity: Dict[str, Any], granger: Dict[str, Any], sarima: Dict[str, Any], garch: Dict[str, Any], roi: Dict[str, Any]) -> Dict[str, str]:
-        inflation_stationary = stationarity["inflation_yoy"]["stationary"]
-        causality_text = (
-            "Mobile money growth shows predictive content for inflation shifts in the mock system."
-            if granger["granger_causality_detected"]
-            else "Mobile money growth does not clear a strict Granger threshold in this run, so treat the relationship as directional, not deterministic."
-        )
-
-        message = {
-            "policy_readout": (
-                f"Inflation YoY is {'stationary' if inflation_stationary else 'non-stationary'}, which tells Dennis whether a forecasting model is tracking a stable process or a drifting one. "
-                f"The current fintech volatility regime is {garch['volatility_regime'].lower()}, meaning executive attention should focus on either growth capture or shock containment."
-            ),
-            "commercial_implication": (
-                f"{causality_text} The boardroom implication is simple: if M-Pesa velocity starts to wobble while CBR remains elevated, consumer pricing pressure and merchant liquidity can diverge quickly."
-            ),
-            "decision_hook": (
-                f"Base case SARIMA expects average inflation over the next 12 months of {round(float(sarima['future_forecast']['forecast_inflation_yoy_pct'].mean()), 2)}%. "
-                f"A 100 bps rate cut in this system is associated with roughly KES {roi['estimated_monthly_transaction_uplift_kes_bn_after_100bps_cut']} bn extra monthly transaction throughput."
-            ),
-        }
-        return message
-
-    def run_pipeline(self, output_dir: str | Path = "artifacts", horizon: int = 12) -> Dict[str, Any]:
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
-
-        raw = self.generate_mock_cbk_data(periods=60)
-        cleaned = self.clean_data(raw)
-        stationarity = self.stationarity_suite(cleaned)
-        granger = self.run_granger_causality(cleaned)
-        sarima = self.fit_sarima(cleaned, horizon=horizon)
-        garch = self.fit_garch(cleaned, horizon=horizon)
-        roi = self.executive_roi_summary(cleaned)
-        note = self.strategic_note(stationarity, granger, sarima, garch, roi)
-
-        raw.to_csv(output_path / "mock_cbk_raw_data.csv", index=False)
-        cleaned.to_csv(output_path / "mock_cbk_cleaned_data.csv", index=False)
-        sarima["holdout_forecast"].to_csv(output_path / "inflation_holdout_forecast.csv", index=False)
-        sarima["future_forecast"].to_csv(output_path / "inflation_12m_forecast.csv", index=False)
-        garch["historical_volatility"].to_csv(output_path / "historical_market_volatility.csv", index=False)
-        garch["future_volatility"].to_csv(output_path / "future_market_volatility.csv", index=False)
-
-        diagnostics = {
-            "stationarity": stationarity,
-            "granger_causality": granger,
-            "sarima_summary": {
-                "model_type": sarima["model_type"],
-                "chosen_specification": sarima["chosen_specification"],
-                "holdout_mae": sarima["holdout_mae"],
-                "holdout_rmse": sarima["holdout_rmse"],
-            },
-            "garch_summary": {
-                "model_type": garch["model_type"],
-                "current_market_volatility_index": garch["current_market_volatility_index"],
-                "volatility_regime": garch["volatility_regime"],
-            },
-            "roi_summary": roi,
-            "strategic_note": note,
-        }
-
-        with open(output_path / "diagnostics.json", "w", encoding="utf-8") as f:
-            json.dump(self._json_ready(diagnostics), f, indent=2)
+    def strategic_note(self, validation: Dict[str, Any], sarima: Dict[str, Any], garch: Dict[str, Any], advisory: Dict[str, Any]) -> Dict[str, str]:
+        inflation_stationary = validation["financial_model_validation"]["stationarity"]["inflation_yoy"]["stationary"]
+        granger_detected = validation["financial_model_validation"]["granger_causality"]["granger_causality_detected"]
+        future_avg_inflation = round(float(sarima["future_forecast"]["forecast_inflation_yoy_pct"].mean()), 2)
 
         return {
-            "raw_data": raw,
-            "cleaned_data": cleaned,
-            "stationarity": stationarity,
-            "granger_causality": granger,
-            "sarima": sarima,
-            "garch": garch,
-            "roi_summary": roi,
-            "strategic_note": note,
-            "output_dir": str(output_path.resolve()),
-        }
-
-
-def run_pipeline(output_dir: str | Path = "artifacts", horizon: int = 12) -> Dict[str, Any]:
-    engine = KenyaEconomicIntelligenceEngine()
-    return engine.run_pipeline(output_dir=output_dir, horizon=horizon)
-
-
-if __name__ == "__main__":
-    outputs = run_pipeline(output_dir=Path(__file__).resolve().parent / "artifacts")
-    sarima_future = outputs["sarima"]["future_forecast"]
-    print("Economic Intelligence Hub pipeline executed successfully.")
-    print(f"Artifacts saved to: {outputs['output_dir']}")
-    print(
-        "12-month average inflation forecast: "
-        f"{sarima_future['forecast_inflation_yoy_pct'].mean():.2f}%"
-    )
-    print(
-        "Current market volatility index: "
-        f"{outputs['garch']['current_market_volatility_index']:.2f}"
-    )
+            "policy_readout": (
+                f"Inflation YoY is {'stationary' if inflation_stationary else 'non-stationary'}, which tells finance leadership whether the forecasting base is stable or drifting. "
+                f"Current market volatility is {garch['volatility_regime'].lower()}, so planning should emphasize either resilience or shock containment."
+            ),
+            "commercial_implication": (
+                "Mobile money growth shows predictive content for inflation shifts. "
+                if granger_detected
+                else "Mobile money growth does not clear a strict causality threshold in this run, so treat it as directional rather than deterministic. "
+            )
+            +
