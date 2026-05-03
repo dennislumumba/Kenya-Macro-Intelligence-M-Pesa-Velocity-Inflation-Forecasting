@@ -125,3 +125,4 @@
     "decision_hook": "Base case SARIMA expects average inflation over the next 12 months of 4.44%. A 100 bps rate cut in this system is associated with roughly KES 15.68 bn extra monthly transaction throughput."
   }
 }
+Move diagnostics to artifacts folder
